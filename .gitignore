@@ -2,6 +2,7 @@
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+.host-contract/
 backend/dist/
 backend/build/
 backend/src/*.egg-info/
