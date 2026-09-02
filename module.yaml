@@ -1,0 +1,20 @@
+manifest_version: 1
+id: statistics
+name: Statistics
+version: 0.2.0
+requires:
+  host: ">=0.2.0,<1.0.0"
+  sdk: ">=1.15.0,<2.0.0"
+  modules: {}
+optional:
+  modules: {}
+backend:
+  package: ocp-module-statistics
+frontend:
+  package: "@open-city-planner/statistics"
+capabilities:
+  - statistics.query
+permissions: []
+persistence:
+  schema: statistics
+  migrations: false

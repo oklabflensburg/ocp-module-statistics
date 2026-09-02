@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/oklabflensburg/open-city-planner.git",
+  "commit": "6e78bf72f16343c9c29ce8eeeeff8bbf45115bb2",
+  "source_branch": "staging/epic-91-modular-host",
+  "sdk_version": "1.15.0",
+  "host_version": "0.2.0",
+  "frontend_sdk_version": "1.5.0",
+  "frontend_host_version": "1.0.0"
+}
