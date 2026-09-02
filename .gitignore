@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+backend/dist/
+backend/build/
+backend/src/*.egg-info/
+frontend/node_modules/
+frontend/dist/
+dist/
+*.ocp
+*.sha256
