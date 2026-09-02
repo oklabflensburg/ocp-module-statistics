@@ -1,0 +1,5 @@
+"""Metadata for statistics tables retained from the Host migration lineage."""
+
+from .tables import ADOPTED_TABLES, METADATA
+
+__all__ = ["ADOPTED_TABLES", "METADATA"]
