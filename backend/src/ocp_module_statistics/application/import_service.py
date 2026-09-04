@@ -27,6 +27,8 @@ class StatisticsImportService:
             return None
         if settings.import_dataset != "flensburg-superset-v1":
             raise ValueError("Unsupported Statistics import dataset")
+        if settings.provider_base_url is None:
+            raise RuntimeError("Enabled Statistics import requires provider_base_url")
         base_url = str(settings.provider_base_url)
         source_url = urljoin(base_url, f"superset/dashboard/{settings.provider_dashboard_id}/")
         provider = SupersetStatisticsProvider(

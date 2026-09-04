@@ -16,21 +16,32 @@ class Services:
 
 
 class Context:
-    def __init__(self, services=..., *, enabled: bool = True) -> None:
+    def __init__(
+        self,
+        services=...,
+        *,
+        enabled: bool = False,
+        scheduler=...,
+        database=...,
+        http=...,
+    ) -> None:
         self.services = Services() if services is ... else services
         self.settings = SimpleNamespace(
             require=lambda _type: SimpleNamespace(
                 import_enabled=enabled,
+                provider_base_url=("https://statistics.example.test" if enabled else None),
                 import_schedule_seconds=None,
                 import_retry_count=2,
                 provider_timeout_seconds=30,
             )
         )
-        self.scheduler = SimpleNamespace(
-            register=lambda definition: setattr(self, "job", definition)
+        self.scheduler = (
+            SimpleNamespace(register=lambda definition: setattr(self, "job", definition))
+            if scheduler is ...
+            else scheduler
         )
-        self.database = object()
-        self.http = object()
+        self.database = object() if database is ... else database
+        self.http = object() if http is ... else http
 
 
 def test_module_definition_adopts_existing_statistics_tables_without_migrations() -> None:
@@ -56,19 +67,19 @@ def test_module_definition_adopts_existing_statistics_tables_without_migrations(
     )
 
 
-def test_registration_publishes_statistics_query_port() -> None:
-    context = Context()
+def test_query_only_registration_needs_no_import_ports() -> None:
+    context = Context(scheduler=None, database=None, http=None)
     StatisticsModule().register(context)  # type: ignore[arg-type]
     contract, implementation, service_id, version = context.services.registration
     assert contract is StatisticsQueryPort
     assert isinstance(implementation, SqlStatisticsQueryService)
     assert service_id == "statistics.query"
     assert version == 1
-    assert context.job.job_id == "statistics.import"
+    assert not hasattr(context, "job")
 
 
-def test_disabled_import_does_not_register_job() -> None:
-    context = Context(enabled=False)
+def test_disabled_import_with_available_ports_does_not_register_job() -> None:
+    context = Context()
     StatisticsModule().register(context)  # type: ignore[arg-type]
     assert not hasattr(context, "job")
 
@@ -79,6 +90,17 @@ def test_reenabled_import_registers_job_again() -> None:
     enabled = Context(enabled=True)
     StatisticsModule().register(enabled)  # type: ignore[arg-type]
     assert enabled.job.job_id == "statistics.import"
+
+
+def test_enabled_import_requires_scheduler_database_and_http_ports() -> None:
+    for missing in ("scheduler", "database", "http"):
+        arguments = {missing: None, "enabled": True}
+        try:
+            StatisticsModule().register(Context(**arguments))  # type: ignore[arg-type]
+        except RuntimeError as error:
+            assert "scheduler, database, and HTTP" in str(error)
+        else:
+            raise AssertionError(f"missing {missing} must fail for enabled import")
 
 
 def test_registration_requires_service_registry() -> None:
