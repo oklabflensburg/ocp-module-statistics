@@ -1,11 +1,16 @@
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import os from 'node:os'
 import path from 'node:path'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const output = path.join(root, 'dist', 'statistics-0.4.0.tgz')
+const packageMetadata = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'))
+const version = process.env.VERSION ?? packageMetadata.version
+if (version !== packageMetadata.version) {
+  throw new Error(`Requested version ${version} does not match package.json version ${packageMetadata.version}`)
+}
+const output = path.join(root, 'dist', `statistics-${version}.tgz`)
 await rm(path.join(root, 'dist'), { recursive: true, force: true })
 await mkdir(path.dirname(output), { recursive: true })
 const staging = await mkdtemp(path.join(os.tmpdir(), 'statistics-frontend-'))

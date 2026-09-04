@@ -180,6 +180,7 @@ def main() -> None:
     repository = Path(__file__).resolve().parents[1]
     host = Path(sys.argv[1]).resolve()
     bundle = Path(sys.argv[2]).resolve()
+    version = os.environ["VERSION"]
     contract = json.loads(
         (repository / ".github/ocp-host-contract.json").read_text(encoding="utf-8")
     )
@@ -238,6 +239,7 @@ def main() -> None:
             cli(python, backend, install_root, base_environment, "install", str(bundle))
         )
         assert installed["id"] == "statistics"
+        assert installed["version"] == version
         assert installed["enabled"] is False
 
         inventory = json_output(
@@ -250,7 +252,7 @@ def main() -> None:
 
         installed_package = (
             install_root
-            / "installed/statistics/0.4.0/backend/site-packages/ocp_module_statistics"
+            / f"installed/statistics/{version}/backend/site-packages/ocp_module_statistics"
         )
         run(
             (

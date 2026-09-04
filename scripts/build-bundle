@@ -5,6 +5,19 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 host_root="${OCP_HOST_CHECKOUT:-$repo_root/.host-contract}"
 host_python="$host_root/backend/.venv/bin/python"
 
+manifest_version="$(cd "$repo_root/backend" && uv run python -c 'import yaml; print(yaml.safe_load(open("../module.yaml"))["version"])')"
+version="${VERSION:-$manifest_version}"
+release_tag="${RELEASE_TAG:-v$version}"
+
+if [[ "$version" != "$manifest_version" ]]; then
+  echo "Requested version $version does not match module.yaml version $manifest_version" >&2
+  exit 1
+fi
+if [[ "$release_tag" != "v$version" ]]; then
+  echo "Release tag $release_tag does not match version $version" >&2
+  exit 1
+fi
+
 if [[ ! -x "$host_python" ]]; then
   echo "Pinned host environment missing at $host_root; run scripts/prepare-host-contract first." >&2
   exit 1
@@ -19,9 +32,8 @@ fi
 
 source_commit="${SOURCE_COMMIT:-$(git -C "$repo_root" rev-parse HEAD)}"
 source_epoch="$(git -C "$repo_root" show -s --format=%ct "$source_commit" 2>/dev/null || git -C "$repo_root" show -s --format=%ct HEAD)"
+rm -rf "$repo_root/dist" "$repo_root/backend/build" "$repo_root/backend/dist" "$repo_root/frontend/dist"
 mkdir -p "$repo_root/dist"
-
-rm -rf "$repo_root/backend/build"
 (
   cd "$repo_root/backend"
   SOURCE_DATE_EPOCH="$source_epoch" uv build --wheel --clear
@@ -34,15 +46,18 @@ rm -rf "$repo_root/backend/build"
   cd "$host_root/backend"
   "$host_python" -m app.cli.modules bundle build \
     --manifest "$repo_root/module.yaml" \
-    --backend "$repo_root/backend/dist/ocp_module_statistics-0.4.0-py3-none-any.whl" \
-    --frontend "$repo_root/frontend/dist/statistics-0.4.0.tgz" \
+    --backend "$repo_root/backend/dist/ocp_module_statistics-${version}-py3-none-any.whl" \
+    --frontend "$repo_root/frontend/dist/statistics-${version}.tgz" \
     --publisher oklabflensburg \
-    --source-reference releases/statistics/0.4.0 \
+    --source-reference "releases/statistics/$version" \
     --source-repository https://github.com/oklabflensburg/ocp-module-statistics \
     --source-commit "$source_commit" \
-    --source-tag v0.4.0 \
+    --source-tag "$release_tag" \
     --build-workflow github-actions/module-release \
     --license AGPL-3.0-only \
-    --output "$repo_root/dist/statistics-0.4.0.ocp"
+    --output "$repo_root/dist/statistics-${version}.ocp"
 )
-sha256sum "$repo_root/dist/statistics-0.4.0.ocp" > "$repo_root/dist/statistics-0.4.0.ocp.sha256"
+(
+  cd "$repo_root"
+  sha256sum "dist/statistics-${version}.ocp" > "dist/statistics-${version}.ocp.sha256"
+)

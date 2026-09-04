@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+workflow="$repo_root/.github/workflows/release.yml"
+
+if matches=$(grep -En 'statistics[-_][0-9]+\.[0-9]+\.[0-9]+' "$workflow"); then
+  echo "Release workflow contains version-specific Statistics artifact paths:" >&2
+  echo "$matches" >&2
+  exit 1
+fi
+
+required_dynamic_paths=(
+  'ocp_module_statistics-${VERSION}-py3-none-any.whl'
+  'statistics-${VERSION}.tgz'
+  'statistics-${VERSION}.ocp'
+  'statistics-${VERSION}.ocp.sha256'
+)
+for path in "${required_dynamic_paths[@]}"; do
+  if ! grep -Fq "$path" "$workflow"; then
+    echo "Release workflow is missing dynamic artifact path: $path" >&2
+    exit 1
+  fi
+done
+
+echo "Release workflow artifact paths are version-independent."

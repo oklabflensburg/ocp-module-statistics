@@ -9,6 +9,12 @@ permissions:
   contents: read
 
 jobs:
+  release-workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: scripts/check-release-workflow
+
   backend:
     runs-on: ubuntu-latest
     steps:
@@ -73,6 +79,10 @@ jobs:
         working-directory: backend
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
+      - name: Determine module version
+        run: |
+          version=$(cd backend && uv run python -c 'import yaml; print(yaml.safe_load(open("../module.yaml"))["version"])')
+          echo "VERSION=$version" >> "$GITHUB_ENV"
       - run: OCP_HOST_CHECKOUT="$GITHUB_WORKSPACE/.host-contract" scripts/build-bundle
-      - run: sha256sum -c dist/statistics-0.4.0.ocp.sha256
+      - run: sha256sum -c "dist/statistics-${VERSION}.ocp.sha256"
       - run: OCP_HOST_CHECKOUT="$GITHUB_WORKSPACE/.host-contract" scripts/host-contract-test
