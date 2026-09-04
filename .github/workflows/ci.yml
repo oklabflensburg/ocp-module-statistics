@@ -74,5 +74,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
       - run: OCP_HOST_CHECKOUT="$GITHUB_WORKSPACE/.host-contract" scripts/build-bundle
-      - run: sha256sum -c dist/statistics-0.3.0.ocp.sha256
+      - run: sha256sum -c dist/statistics-0.4.0.ocp.sha256
       - run: OCP_HOST_CHECKOUT="$GITHUB_WORKSPACE/.host-contract" scripts/host-contract-test

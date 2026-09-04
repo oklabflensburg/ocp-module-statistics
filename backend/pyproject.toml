@@ -1,11 +1,11 @@
 [project]
 name = "ocp-module-statistics"
-version = "0.3.0"
+version = "0.4.0"
 description = "Statistics query and municipal import module for Open City Planner"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = "AGPL-3.0-only"
-dependencies = ["pydantic>=2.11.7", "sqlalchemy>=2.0.42"]
+dependencies = ["fastapi>=0.116.1", "pydantic>=2.11.7", "sqlalchemy>=2.0.42"]
 
 [project.entry-points."open_city_planner.modules"]
 statistics = "ocp_module_statistics.module:DEFINITION"

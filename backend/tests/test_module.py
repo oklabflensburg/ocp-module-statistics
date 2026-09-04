@@ -24,7 +24,14 @@ class Context:
         scheduler=...,
         database=...,
         http=...,
+        public_queries=...,
+        permission_dependencies=...,
     ) -> None:
+        self.api = SimpleNamespace(
+            include_router=lambda router, **options: setattr(
+                self, "router_registration", (router, options)
+            )
+        )
         self.services = Services() if services is ... else services
         self.settings = SimpleNamespace(
             require=lambda _type: SimpleNamespace(
@@ -42,6 +49,16 @@ class Context:
         )
         self.database = object() if database is ... else database
         self.http = object() if http is ... else http
+        self.public_queries = (
+            SimpleNamespace(limits=SimpleNamespace(max_response_items=100))
+            if public_queries is ...
+            else public_queries
+        )
+        self.permission_dependencies = (
+            SimpleNamespace(require=lambda permission: (lambda: None))
+            if permission_dependencies is ...
+            else permission_dependencies
+        )
 
 
 def test_module_definition_adopts_existing_statistics_tables_without_migrations() -> None:
@@ -67,8 +84,8 @@ def test_module_definition_adopts_existing_statistics_tables_without_migrations(
     )
 
 
-def test_query_only_registration_needs_no_import_ports() -> None:
-    context = Context(scheduler=None, database=None, http=None)
+def test_query_only_registration_needs_no_import_scheduler_or_http_client() -> None:
+    context = Context(scheduler=None, http=None)
     StatisticsModule().register(context)  # type: ignore[arg-type]
     contract, implementation, service_id, version = context.services.registration
     assert contract is StatisticsQueryPort
@@ -76,6 +93,14 @@ def test_query_only_registration_needs_no_import_ports() -> None:
     assert service_id == "statistics.query"
     assert version == 1
     assert not hasattr(context, "job")
+    router, options = context.router_registration
+    assert options == {"prefix": "/api/v1", "tags": ("Statistics",)}
+    assert {route.path for route in router.routes} == {
+        "/statistics/sources",
+        "/statistics/metrics",
+        "/statistics/import-status",
+        "/statistics/import-runs",
+    }
 
 
 def test_disabled_import_with_available_ports_does_not_register_job() -> None:
@@ -93,7 +118,7 @@ def test_reenabled_import_registers_job_again() -> None:
 
 
 def test_enabled_import_requires_scheduler_database_and_http_ports() -> None:
-    for missing in ("scheduler", "database", "http"):
+    for missing in ("scheduler", "http"):
         arguments = {missing: None, "enabled": True}
         try:
             StatisticsModule().register(Context(**arguments))  # type: ignore[arg-type]
@@ -101,6 +126,17 @@ def test_enabled_import_requires_scheduler_database_and_http_ports() -> None:
             assert "scheduler, database, and HTTP" in str(error)
         else:
             raise AssertionError(f"missing {missing} must fail for enabled import")
+
+
+def test_http_api_requires_public_database_query_and_permission_ports() -> None:
+    for missing in ("database", "public_queries", "permission_dependencies"):
+        arguments = {missing: None}
+        try:
+            StatisticsModule().register(Context(**arguments))  # type: ignore[arg-type]
+        except RuntimeError as error:
+            assert "Statistics HTTP API requires" in str(error)
+        else:
+            raise AssertionError(f"missing {missing} must fail for the HTTP API")
 
 
 def test_registration_requires_service_registry() -> None:

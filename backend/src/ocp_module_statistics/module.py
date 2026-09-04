@@ -13,6 +13,7 @@ from app.platform.modules.sdk import (
     parse_manifest,
 )
 
+from ocp_module_statistics.api import create_router
 from ocp_module_statistics.application.import_service import StatisticsImportService
 from ocp_module_statistics.application.query_service import SqlStatisticsQueryService
 from ocp_module_statistics.persistence import ADOPTED_TABLES, METADATA
@@ -23,11 +24,12 @@ MANIFEST = parse_manifest(
         "manifest_version": 1,
         "id": "statistics",
         "name": "Statistics",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "requires": {"host": ">=0.2.0,<1.0.0", "sdk": ">=1.15.0,<2.0.0"},
         "backend": {"package": "ocp-module-statistics"},
         "frontend": {"package": "@open-city-planner/statistics"},
         "capabilities": ["statistics.query", "statistics.import"],
+        "permissions": ["statistics.import"],
         "config": {"namespace": "statistics"},
         "persistence": {"schema": "statistics", "migrations": False},
     },
@@ -39,7 +41,7 @@ class StatisticsModule:
     manifest = MANIFEST
 
     def register(self, context: ModuleContext) -> None:
-        """Publish queries and, when enabled, the module-owned import job."""
+        """Publish HTTP/catalog queries and, when enabled, the import job."""
         if context.services is None:
             raise RuntimeError("The Statistics module requires the service registry.")
         context.services.register(
@@ -51,6 +53,28 @@ class StatisticsModule:
         if context.settings is None:
             raise RuntimeError("The Statistics module requires module settings.")
         settings = context.settings.require(StatisticsSettings)
+        required_http_ports = {
+            "database": context.database,
+            "public queries": context.public_queries,
+            "permission dependencies": context.permission_dependencies,
+        }
+        if missing := [name for name, port in required_http_ports.items() if port is None]:
+            raise RuntimeError(
+                "The Statistics HTTP API requires these public ports: " + ", ".join(missing)
+            )
+        assert context.database is not None
+        assert context.public_queries is not None
+        assert context.permission_dependencies is not None
+        context.api.include_router(
+            create_router(
+                context.database,
+                context.public_queries,
+                context.permission_dependencies,
+                import_enabled=settings.import_enabled,
+            ),
+            prefix="/api/v1",
+            tags=("Statistics",),
+        )
         if not settings.import_enabled:
             return
         if context.scheduler is None or context.database is None or context.http is None:
