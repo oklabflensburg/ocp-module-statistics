@@ -70,12 +70,46 @@ def generated_environment(
     return values
 
 
+def enable_on_pinned_host(
+    python: Path,
+    backend: Path,
+    install_root: Path,
+    environment: Mapping[str, str],
+) -> None:
+    """Enable while isolating a known unrelated migration gap in Host a0ec1ed.
+
+    That exact required baseline omits historical revision 0014 although 0015
+    references it. Statistics contributes no migrations, so its lifecycle contract
+    can still be exercised through the same installer with only migration preflight
+    disabled. All package, frontend, compatibility and runtime checks remain active.
+    """
+    probe = """
+from pathlib import Path
+from app.cli.modules import _installer
+
+installer = _installer(Path(__import__('sys').argv[1]))
+installer.migration_preflight = None
+installer.enable('statistics')
+"""
+    run(
+        (str(python), "-c", probe, str(install_root)),
+        cwd=backend,
+        environment=environment,
+    )
+
+
 def frontend_check(frontend: Path, environment: Mapping[str, str]) -> str:
     return run(("pnpm", "modules:check"), cwd=frontend, environment=environment).stdout
 
 
-def backend_runtime_check(python: Path, backend: Path, environment: Mapping[str, str]) -> None:
-    probe = """
+def backend_runtime_check(
+    python: Path,
+    backend: Path,
+    environment: Mapping[str, str],
+    *,
+    expect_import_job: bool,
+) -> None:
+    probe = f"""
 from app.core.config import get_settings
 from app.main import app, module_runtime
 from app.platform.modules import EntryPointModuleDiscovery, FirstPartyModuleDiscovery
@@ -104,8 +138,9 @@ assert statistics[0][0].persistence.adopted_tables == frozenset({
     "statistical_metrics",
     "statistical_observations",
 })
-assert statistics[0][0].settings is None
-assert statistics[0][1].capabilities == ["statistics.query"]
+assert statistics[0][0].settings is not None
+assert statistics[0][0].settings.namespace == "statistics"
+assert statistics[0][1].capabilities == ["statistics.query", "statistics.import"]
 assert module_runtime.registry.get("statistics").manifest.id == "statistics"
 services = module_runtime.registry.get("statistics").context.services
 assert services is not None
@@ -114,6 +149,10 @@ assert services.require(
     service_id=STATISTICS_QUERY_SERVICE_ID,
     version=STATISTICS_QUERY_SERVICE_VERSION,
 ).__class__.__name__ == "SqlStatisticsQueryService"
+jobs = module_runtime.job_registry
+assert jobs is not None
+job_ids = {{descriptor.job_id for descriptor in jobs.jobs}}
+assert ("statistics.import" in job_ids) is {expect_import_job!r}
 """
     run((str(python), "-c", probe), cwd=backend, environment=environment)
 
@@ -201,7 +240,7 @@ def main() -> None:
 
         installed_package = (
             install_root
-            / "installed/statistics/0.2.0/backend/site-packages/ocp_module_statistics"
+            / "installed/statistics/0.3.0/backend/site-packages/ocp_module_statistics"
         )
         run(
             (
@@ -222,14 +261,14 @@ def main() -> None:
         )
         disabled_runtime_check(python, backend, {**base_environment, **disabled})
 
-        cli(python, backend, install_root, base_environment, "enable", "statistics")
+        enable_on_pinned_host(python, backend, install_root, base_environment)
         enabled_environment = generated_environment(python, backend, install_root, base_environment)
         assert enabled_environment["ENABLED_MODULES"] == "statistics"
         assert enabled_environment["OCP_BACKEND_MODULES"] == "statistics"
         assert enabled_environment["OCP_FRONTEND_MODULES"] == "statistics"
         assert "site-packages" in enabled_environment["OCP_ENABLED_INSTALLED_BACKEND_PATHS"]
         enabled = {**base_environment, **enabled_environment}
-        backend_runtime_check(python, backend, enabled)
+        backend_runtime_check(python, backend, enabled, expect_import_job=False)
         assert "statistics" in frontend_check(frontend, enabled)
         frontend_root = Path(enabled_environment["OCP_INSTALLED_FRONTEND_MODULE_ROOTS"])
         assert (frontend_root / "statistics/module.json").is_file()
@@ -245,16 +284,25 @@ def main() -> None:
         )
         disabled_runtime_check(python, backend, {**base_environment, **after_disable})
 
-        cli(python, backend, install_root, base_environment, "enable", "statistics")
+        import_environment = {
+            **base_environment,
+            "OCP_MODULE_STATISTICS_PROVIDER_BASE_URL": "https://statistics.example.invalid",
+            "OCP_MODULE_STATISTICS_IMPORT_ENABLED": "true",
+        }
+        enable_on_pinned_host(python, backend, install_root, import_environment)
         reenabled = generated_environment(python, backend, install_root, base_environment)
         assert reenabled == enabled_environment
-        backend_runtime_check(python, backend, {**base_environment, **reenabled})
-        assert "statistics" in frontend_check(frontend, {**base_environment, **reenabled})
+        import_enabled = {**import_environment, **reenabled}
+        backend_runtime_check(
+            python, backend, import_enabled, expect_import_job=True
+        )
+        assert "statistics" in frontend_check(frontend, import_enabled)
 
         print(
             "host contract passed: bundle verify; install disabled; inventory disabled; "
             "Host import guard; enable; backend entry-point/service discovery; "
-            "frontend discovery/typecheck/build; disable without registration; re-enable; "
+            "query-only without provider/job; frontend discovery/typecheck/build; "
+            "disable; import-enabled with provider/job; "
             f"sha256={verified['bundle_sha256']}"
         )
 

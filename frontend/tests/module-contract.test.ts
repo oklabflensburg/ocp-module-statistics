@@ -6,16 +6,16 @@ const root = fileURLToPath(new URL('..', import.meta.url))
 const definition = JSON.parse(readFileSync(`${root}/module.json`, 'utf8'))
 
 describe('Statistics frontend module contract', () => {
-  it('declares the current read-only backend module shape', () => {
+  it('declares the current backend module shape', () => {
     expect(definition).toEqual({
       schemaVersion: 1,
       id: 'statistics',
-      version: '0.2.0',
+      version: '0.3.0',
       backendModuleId: 'statistics',
       compatibility: {
         host: '>=1.0.0 <2.0.0',
         sdk: '>=1.5.0 <2.0.0',
-        backend: '>=0.2.0 <0.3.0'
+        backend: '>=0.3.0 <0.4.0'
       },
       layer: 'layer',
       requires: { modules: {} },

@@ -30,15 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-          run_install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: corepack enable && corepack prepare pnpm@11.22.0 --activate
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
       - run: pnpm typecheck
@@ -65,13 +60,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: .python-version
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 11.22.0
-          run_install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
+      - run: corepack enable && corepack prepare pnpm@11.22.0 --activate
       - run: python -m pip install uv==0.12.5
       - run: uv sync --frozen --extra dev
         working-directory: .host-contract/backend
@@ -82,5 +74,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
       - run: OCP_HOST_CHECKOUT="$GITHUB_WORKSPACE/.host-contract" scripts/build-bundle
-      - run: sha256sum -c dist/statistics-0.2.0.ocp.sha256
+      - run: sha256sum -c dist/statistics-0.3.0.ocp.sha256
       - run: OCP_HOST_CHECKOUT="$GITHUB_WORKSPACE/.host-contract" scripts/host-contract-test

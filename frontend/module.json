@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "id": "statistics",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "backendModuleId": "statistics",
   "compatibility": {
     "host": ">=1.0.0 <2.0.0",
     "sdk": ">=1.5.0 <2.0.0",
-    "backend": ">=0.2.0 <0.3.0"
+    "backend": ">=0.3.0 <0.4.0"
   },
   "layer": "layer",
   "requires": { "modules": {} },

@@ -28,8 +28,9 @@ async def _statistics_mapping(
     session: AsyncSession, selection: StatisticsSelection
 ) -> Mapping[str, object] | None:
     return (
-        await session.execute(
-            text("""
+        (
+            await session.execute(
+                text("""
               SELECT target.id AS target_id,
                      municipality.id AS municipality_id,
                      target.source AS source
@@ -43,31 +44,36 @@ async def _statistics_mapping(
               ORDER BY target.source
               LIMIT 1
             """),
-            {
-                "target_name": selection.target.name,
-                "target_level": selection.target.area_type,
-                "municipality_name": selection.municipality.name,
-                "municipality_level": selection.municipality.area_type,
-            },
+                {
+                    "target_name": selection.target.name,
+                    "target_level": selection.target.area_type,
+                    "municipality_name": selection.municipality.name,
+                    "municipality_level": selection.municipality.area_type,
+                },
+            )
         )
-    ).mappings().first()
+        .mappings()
+        .first()
+    )
 
 
-async def _statistics_source(
-    session: AsyncSession, source: str
-) -> StatisticsSource | None:
+async def _statistics_source(session: AsyncSession, source: str) -> StatisticsSource | None:
     row = (
-        await session.execute(
-            text("""
+        (
+            await session.execute(
+                text("""
               SELECT name,source_url,license,last_import_at,source_updated_at
               FROM statistical_datasets
               WHERE source=:source AND last_import_at IS NOT NULL
               ORDER BY last_import_at DESC,id DESC
               LIMIT 1
             """),
-            {"source": source},
+                {"source": source},
+            )
         )
-    ).mappings().first()
+        .mappings()
+        .first()
+    )
     if row is None:
         return None
     return StatisticsSource(
@@ -89,8 +95,9 @@ class SqlStatisticsQueryService:
         if mapping is None:
             return None
         rows = (
-            await session.execute(
-                text("""
+            (
+                await session.execute(
+                    text("""
                   WITH ranked AS (
                     SELECT observation.*,row_number() OVER (
                       PARTITION BY observation.metric_id
@@ -112,9 +119,12 @@ class SqlStatisticsQueryService:
                   WHERE ranked.rank=1 AND metric.public=true AND dataset.source=:source
                   ORDER BY metric.category,metric.name
                 """),
-                mapping,
+                    mapping,
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         latest = []
         for row in rows:
             value = row["value_numeric"]
@@ -163,8 +173,9 @@ class SqlStatisticsQueryService:
         if mapping is None:
             return None
         metric = (
-            await session.execute(
-                text("""
+            (
+                await session.execute(
+                    text("""
                   SELECT metric.id,metric.key,metric.name,metric.unit,metric.category
                   FROM statistical_metrics metric
                   JOIN statistical_datasets dataset ON dataset.id=metric.dataset_id
@@ -172,22 +183,29 @@ class SqlStatisticsQueryService:
                     AND dataset.source=:source
                   LIMIT 1
                 """),
-                {**mapping, "metric_key": metric_key},
+                    {**mapping, "metric_key": metric_key},
+                )
             )
-        ).mappings().first()
+            .mappings()
+            .first()
+        )
         if metric is None:
             return None
         rows = (
-            await session.execute(
-                text("""
+            (
+                await session.execute(
+                    text("""
                   SELECT period_start,value_numeric,value_text
                   FROM statistical_observations
                   WHERE metric_id=:metric_id AND statistical_area_id=:target_id
                   ORDER BY period_start
                 """),
-                {"metric_id": metric["id"], "target_id": mapping["target_id"]},
+                    {"metric_id": metric["id"], "target_id": mapping["target_id"]},
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         return AreaStatisticSeries(
             area=_statistics_area(selection.requested),
             statistics_area=_statistics_area(selection.target),

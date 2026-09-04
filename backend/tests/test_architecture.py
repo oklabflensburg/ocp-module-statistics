@@ -38,3 +38,17 @@ def test_runtime_sql_is_read_only_and_has_no_analysis_area_hierarchy_policy() ->
 def test_module_does_not_ship_or_claim_migrations() -> None:
     assert not (PACKAGE / "migrations").exists()
     assert "ModuleMigrationSource" not in (PACKAGE / "module.py").read_text()
+
+
+def test_write_sql_only_targets_statistics_owned_tables() -> None:
+    source = (PACKAGE / "persistence/repository.py").read_text().lower()
+    written = set(re.findall(r"(?:insert\s+into|update|delete\s+from)\s+([a-z_]+)", source))
+    written.discard("set")  # PostgreSQL's ``ON CONFLICT DO UPDATE SET`` clause.
+    assert written <= {
+        "external_area_mappings",
+        "statistical_datasets",
+        "statistical_import_runs",
+        "statistical_metrics",
+        "statistical_observations",
+    }
+    assert {"analysis_areas", "user_polygons", "cache_versions", "users"}.isdisjoint(written)

@@ -144,9 +144,7 @@ async def test_inherited_selection_is_preserved_without_quarter_policy() -> None
             ]
         )
     )
-    result = await SqlStatisticsQueryService().for_selection(
-        session, selection(inherited=True)
-    )
+    result = await SqlStatisticsQueryService().for_selection(session, selection(inherited=True))
     assert result is not None
     assert result.area.area_type == "QUARTER"
     assert result.statistics_area.area_type == "DISTRICT"
@@ -195,9 +193,7 @@ async def test_series_and_missing_metric() -> None:
     assert result.series[1].suppressed is True
 
     missing_session = SimpleNamespace(
-        execute=AsyncMock(
-            side_effect=[MappingResult(first=mapping), MappingResult()]
-        )
+        execute=AsyncMock(side_effect=[MappingResult(first=mapping), MappingResult()])
     )
     assert (
         await SqlStatisticsQueryService().series_for_selection(
