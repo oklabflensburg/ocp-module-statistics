@@ -26,6 +26,7 @@ except ModuleNotFoundError:
         backend: dict[str, str] | None = None
         frontend: dict[str, str] | None = None
         capabilities: tuple[str, ...] = ()
+        config: object | None = None
         persistence: object | None = None
 
     def parse_manifest(data: dict[str, Any], *, origin: str | None = None) -> Manifest:
@@ -39,6 +40,7 @@ except ModuleNotFoundError:
             backend=data.get("backend"),
             frontend=data.get("frontend"),
             capabilities=tuple(data.get("capabilities", ())),
+            config=SimpleNamespace(**data["config"]) if data.get("config") else None,
             persistence=SimpleNamespace(**persistence) if persistence else None,
         )
 
@@ -57,9 +59,38 @@ except ModuleNotFoundError:
         origin: str
         declared_id: str
         persistence: ModulePersistenceContribution | None = None
-        settings: None = None
+        settings: object | None = None
+
+    @dataclass(frozen=True, slots=True)
+    class ModuleSettingsContribution:
+        module_id: str
+        namespace: str
+        model: type
+
+    @dataclass(frozen=True, slots=True)
+    class JobSchedule:
+        interval_seconds: int
+
+    @dataclass(frozen=True, slots=True)
+    class RetryPolicy:
+        max_attempts: int = 1
+
+    @dataclass(frozen=True, slots=True)
+    class JobDefinition:
+        job_id: str
+        handler: object
+        retry: RetryPolicy = RetryPolicy()
+        timeout_seconds: float | None = None
+        schedule: JobSchedule | None = None
+        allow_concurrent_runs: bool = False
 
     class ModuleContext:
+        pass
+
+    class HttpClientPort(Protocol):
+        pass
+
+    class HttpClientFactoryPort(Protocol):
         pass
 
     class StatisticsQueryPort(Protocol):
@@ -130,9 +161,15 @@ except ModuleNotFoundError:
     for name in (
         "AreaStatistics",
         "AreaStatisticSeries",
+        "HttpClientFactoryPort",
+        "HttpClientPort",
+        "JobDefinition",
+        "JobSchedule",
         "ModuleContext",
         "ModuleDefinition",
         "ModulePersistenceContribution",
+        "ModuleSettingsContribution",
+        "RetryPolicy",
         "StatisticSeriesPoint",
         "StatisticsArea",
         "StatisticsQueryPort",
