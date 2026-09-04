@@ -28,7 +28,7 @@ imported, and no Host cache/audit table is touched.
 ## Persistence decision
 
 The module declares the five existing statistics tables as `adopted_tables` and
-ships no migrations in 0.3.0. Host revision `20260816_0016` originally created all
+ships no migrations in 0.4.0. Host revision `20260816_0016` originally created all
 five tables but also touched generic `cache_versions`. Revision `20260901_0035`
 decoupled statistics areas from Analysis Areas and is statistics-only. Both published
 revisions stay immutable in the Host migration history until migration ownership can

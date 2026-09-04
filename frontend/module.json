@@ -1,19 +1,54 @@
 {
   "schemaVersion": 1,
   "id": "statistics",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "backendModuleId": "statistics",
   "compatibility": {
     "host": ">=1.0.0 <2.0.0",
     "sdk": ">=1.5.0 <2.0.0",
-    "backend": ">=0.3.0 <0.4.0"
+    "backend": ">=0.4.0 <0.5.0"
   },
   "layer": "layer",
   "requires": { "modules": {} },
   "publicContributions": {
-    "routes": [],
-    "ui": [],
+    "routes": [
+      { "path": "/statistik", "source": "layer/app/pages/statistik/index.vue" },
+      { "path": "/statistik/datenquellen", "source": "layer/app/pages/statistik/datenquellen.vue" },
+      { "path": "/statistik/kennzahlen", "source": "layer/app/pages/statistik/kennzahlen.vue" },
+      { "path": "/statistik/importstatus", "source": "layer/app/pages/statistik/importstatus.vue" }
+    ],
+    "ui": [
+      {
+        "id": "statistics.primary-navigation",
+        "slot": "navigation.primary",
+        "priority": 210,
+        "visibility": { "auth": "public", "module": "statistics" },
+        "label": "Statistik",
+        "to": "/statistik",
+        "exact": false
+      },
+      {
+        "id": "statistics.import-status-navigation",
+        "slot": "navigation.admin",
+        "priority": 220,
+        "visibility": {
+          "auth": "authenticated",
+          "permission": "statistics.import",
+          "module": "statistics"
+        },
+        "label": "Statistik-Import",
+        "to": "/statistik/importstatus",
+        "exact": false
+      }
+    ],
     "map": { "sources": [], "layers": [] },
-    "sitemap": { "staticRoutes": [], "dynamicRoutes": [] }
+    "sitemap": {
+      "staticRoutes": [
+        "/statistik",
+        "/statistik/datenquellen",
+        "/statistik/kennzahlen"
+      ],
+      "dynamicRoutes": []
+    }
   }
 }

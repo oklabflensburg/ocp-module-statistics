@@ -1,7 +1,7 @@
 {
   "name": "@open-city-planner/statistics",
-  "version": "0.3.0",
-  "description": "Neutral frontend package for the Open City Planner Statistics module",
+  "version": "0.4.0",
+  "description": "Public catalog and operator frontend for the Open City Planner Statistics module",
   "license": "AGPL-3.0-only",
   "private": false,
   "type": "module",

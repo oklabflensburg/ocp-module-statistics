@@ -141,7 +141,17 @@ assert statistics[0][0].persistence.adopted_tables == frozenset({
 assert statistics[0][0].settings is not None
 assert statistics[0][0].settings.namespace == "statistics"
 assert statistics[0][1].capabilities == ["statistics.query", "statistics.import"]
+assert statistics[0][1].permissions == ["statistics.import"]
 assert module_runtime.registry.get("statistics").manifest.id == "statistics"
+paths = app.openapi()["paths"]
+for expected in (
+    "/api/v1/statistics/sources",
+    "/api/v1/statistics/metrics",
+    "/api/v1/statistics/import-status",
+    "/api/v1/statistics/import-runs",
+):
+    assert expected in paths, expected
+    assert set(paths[expected]) == {{"get"}}, expected
 services = module_runtime.registry.get("statistics").context.services
 assert services is not None
 assert services.require(
@@ -240,7 +250,7 @@ def main() -> None:
 
         installed_package = (
             install_root
-            / "installed/statistics/0.3.0/backend/site-packages/ocp_module_statistics"
+            / "installed/statistics/0.4.0/backend/site-packages/ocp_module_statistics"
         )
         run(
             (

@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from types import ModuleType, SimpleNamespace
 from typing import Any, Protocol
 
+from fastapi import Request
 from sqlalchemy import MetaData
+from sqlalchemy.ext.asyncio import AsyncSession
 
 try:
     import app.platform.modules.sdk  # noqa: F401
@@ -26,6 +28,7 @@ except ModuleNotFoundError:
         backend: dict[str, str] | None = None
         frontend: dict[str, str] | None = None
         capabilities: tuple[str, ...] = ()
+        permissions: tuple[str, ...] = ()
         config: object | None = None
         persistence: object | None = None
 
@@ -40,6 +43,7 @@ except ModuleNotFoundError:
             backend=data.get("backend"),
             frontend=data.get("frontend"),
             capabilities=tuple(data.get("capabilities", ())),
+            permissions=tuple(data.get("permissions", ())),
             config=SimpleNamespace(**data["config"]) if data.get("config") else None,
             persistence=SimpleNamespace(**persistence) if persistence else None,
         )
@@ -86,6 +90,19 @@ except ModuleNotFoundError:
 
     class ModuleContext:
         pass
+
+    @dataclass(frozen=True, slots=True)
+    class ModulePrincipal:
+        id: str
+
+    class DatabaseSessionProvider(Protocol):
+        def session(self): ...
+
+    class PublicQueryPort(Protocol):
+        async def guard(self, request: Request, session: AsyncSession, resource: str): ...
+
+    class PermissionDependencyFactory(Protocol):
+        def require(self, permission_id: str, *, csrf: bool = False): ...
 
     class HttpClientPort(Protocol):
         pass
@@ -161,6 +178,7 @@ except ModuleNotFoundError:
     for name in (
         "AreaStatistics",
         "AreaStatisticSeries",
+        "DatabaseSessionProvider",
         "HttpClientFactoryPort",
         "HttpClientPort",
         "JobDefinition",
@@ -168,7 +186,10 @@ except ModuleNotFoundError:
         "ModuleContext",
         "ModuleDefinition",
         "ModulePersistenceContribution",
+        "ModulePrincipal",
         "ModuleSettingsContribution",
+        "PermissionDependencyFactory",
+        "PublicQueryPort",
         "RetryPolicy",
         "StatisticSeriesPoint",
         "StatisticsArea",
